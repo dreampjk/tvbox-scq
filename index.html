@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TVBox 影视源配置生成器 Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/pinyin-pro@3.18.2/dist/index.js"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+        
+        body { font-family: 'Inter', sans-serif; background: #0f172a; color: #e2e8f0; }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+        
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #1e293b; }
+        ::-webkit-scrollbar-thumb { background: #475569; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #64748b; }
+        
+        .glass {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(71, 85, 105, 0.5);
+        }
+        
+        .neon-glow { box-shadow: 0 0 20px rgba(99, 102, 241, 0.3); }
+        
+        .source-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-left: 3px solid transparent;
+        }
+        .source-card:hover {
+            transform: translateX(4px);
+            border-left-color: #6366f1;
+        }
+        
+        .tab-active {
+            background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+            color: white;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-slide-in { animation: slideIn 0.3s ease-out; }
+        
+        .input-sync { transition: all 0.3s ease; }
+        .input-sync.auto-filled {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.1);
+        }
+        
+        .drop-zone {
+            border: 2px dashed #475569;
+            transition: all 0.3s ease;
+        }
+        .drop-zone.drag-over {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.1);
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-950">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 glass border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center neon-glow">
+                    <i class="fas fa-tv text-white text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight">TVBox <span class="text-indigo-400">Generator</span></h1>
+                    <p class="text-xs text-slate-400">影视源配置批量生成工具</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="app.showImportModal()" class="text-sm text-emerald-400 hover:text-emerald-300 transition-colors">
+                    <i class="fas fa-file-import mr-2"></i>导入JSON
+                </button>
+                <button onclick="app.loadDemoData()" class="text-sm text-slate-400 hover:text-white transition-colors">
+                    <i class="fas fa-magic mr-2"></i>加载示例
+                </button>
+                <button onclick="app.clearAll()" class="text-sm text-red-400 hover:text-red-300 transition-colors">
+                    <i class="fas fa-trash-alt mr-2"></i>清空
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        
+        <!-- Navigation Tabs -->
+        <div class="flex space-x-2 mb-6 overflow-x-auto pb-2">
+            <button onclick="app.switchTab('sites')" id="tab-sites" class="tab-active px-6 py-2.5 rounded-lg font-medium text-sm transition-all whitespace-nowrap">
+                <i class="fas fa-film mr-2"></i>影视站点 (Sites)
+            </button>
+            <button onclick="app.switchTab('lives')" id="tab-lives" class="px-6 py-2.5 rounded-lg font-medium text-sm bg-slate-800 text-slate-400 hover:bg-slate-700 transition-all whitespace-nowrap">
+                <i class="fas fa-broadcast-tower mr-2"></i>直播源 (Lives)
+            </button>
+            <button onclick="app.switchTab('parses')" id="tab-parses" class="px-6 py-2.5 rounded-lg font-medium text-sm bg-slate-800 text-slate-400 hover:bg-slate-700 transition-all whitespace-nowrap">
+                <i class="fas fa-link mr-2"></i>解析接口 (Parses)
+            </button>
+            <button onclick="app.switchTab('flags')" id="tab-flags" class="px-6 py-2.5 rounded-lg font-medium text-sm bg-slate-800 text-slate-400 hover:bg-slate-700 transition-all whitespace-nowrap">
+                <i class="fas fa-flag mr-2"></i>视频标识 (Flags)
+            </button>
+            <button onclick="app.switchTab('ijk')" id="tab-ijk" class="px-6 py-2.5 rounded-lg font-medium text-sm bg-slate-800 text-slate-400 hover:bg-slate-700 transition-all whitespace-nowrap">
+                <i class="fas fa-cogs mr-2"></i>播放器 (IJK)
+            </button>
+            <button onclick="app.switchTab('ads')" id="tab-ads" class="px-6 py-2.5 rounded-lg font-medium text-sm bg-slate-800 text-slate-400 hover:bg-slate-700 transition-all whitespace-nowrap">
+                <i class="fas fa-ban mr-2"></i>广告过滤 (Ads)
+            </button>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Left Panel: Input Forms -->
+            <div class="lg:col-span-5 space-y-6">
+                
+                <!-- Sites Form -->
+                <div id="panel-sites" class="glass rounded-2xl p-6 border border-slate-800">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center text-indigo-400">
+                        <i class="fas fa-plus-circle mr-2"></i>
+                        添加影视站点
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="relative">
+                                <label class="block text-xs font-medium text-slate-400 mb-1">
+                                    站点标识 (key)
+                                    <span class="text-indigo-400 text-[10px] ml-1 auto-sync-badge hidden"><i class="fas fa-sync-alt mr-1"></i>自动</span>
+                                </label>
+                                <input type="text" id="siteKey" placeholder="如：wujin" 
+                                    class="input-sync w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                                    onfocus="app.onKeyFocus()" onblur="app.onKeyBlur()">
+                                <div class="absolute right-2 top-7 text-[10px] text-slate-500 cursor-help" title="自动从名称生成拼音，可手动修改">
+                                    <i class="fas fa-question-circle"></i>
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">站点名称 (name)</label>
+                                <input type="text" id="siteName" placeholder="如：无尽" 
+                                    class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
+                                    oninput="app.onNameInput(this.value)">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">API 接口地址</label>
+                            <input type="text" id="siteApi" placeholder="https://api.example.com/api.php/provide/vod/" 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500 transition-all mono">
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-3">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">类型 (type)</label>
+                                <select id="siteType" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                                    <option value="0">XML (0)</option>
+                                    <option value="1">JSON (1)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">搜索</label>
+                                <select id="siteSearchable" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                                    <option value="1">开启 (1)</option>
+                                    <option value="0">关闭 (0)</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-slate-400 mb-1">快速搜索</label>
+                                <select id="siteQuickSearch" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                                    <option value="1">开启 (1)</option>
+                                    <option value="0">关闭 (0)</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">筛选</label>
+                            <select id="siteFilterable" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-indigo-500">
+                                <option value="1">开启 (1)</option>
+                                <option value="0">关闭 (0)</option>
+                            </select>
+                        </div>
+
+                        <button onclick="app.addSite()" 
+                            class="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-medium py-2.5 rounded-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-indigo-500/25">
+                            <i class="fas fa-plus mr-2"></i>添加站点
+                        </button>
+                    </div>
+
+                    <!-- Bulk Import -->
+                    <div class="mt-6 pt-6 border-t border-slate-700">
+                        <h3 class="text-sm font-medium text-slate-400 mb-3">批量导入 (JSON 格式)</h3>
+                        <textarea id="bulkSites" rows="3" placeholder='[{"key":"test","name":"测试","api":"http://..."}]' 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs mono focus:outline-none focus:border-indigo-500 resize-none"></textarea>
+                        <button onclick="app.importBulkSites()" class="mt-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition-colors">
+                            <i class="fas fa-file-import mr-1"></i>解析导入
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Other panels... -->
+                <!-- Lives Form -->
+                <div id="panel-lives" class="glass rounded-2xl p-6 border border-slate-800 hidden">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center text-emerald-400">
+                        <i class="fas fa-plus-circle mr-2"></i>添加直播源
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">分组名称</label>
+                            <input type="text" id="liveGroup" placeholder="自定义" value="自定义"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">频道名称</label>
+                            <input type="text" id="liveChannelName" placeholder="直播源" value="直播源"
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500 transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">直播地址 (每行一个)</label>
+                            <textarea id="liveUrls" rows="3" placeholder="http://example.com/live.m3u" 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs mono focus:outline-none focus:border-emerald-500 resize-none"></textarea>
+                        </div>
+                        <button onclick="app.addLive()" 
+                            class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 text-white font-medium py-2.5 rounded-lg transition-all shadow-lg shadow-emerald-500/25">
+                            <i class="fas fa-plus mr-2"></i>添加直播源
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Parses Form -->
+                <div id="panel-parses" class="glass rounded-2xl p-6 border border-slate-800 hidden">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center text-amber-400">
+                        <i class="fas fa-plus-circle mr-2"></i>添加解析接口
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">解析名称</label>
+                            <input type="text" id="parseName" placeholder="解析1" 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">解析类型</label>
+                            <select id="parseType" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500">
+                                <option value="0">Web 解析 (0)</option>
+                                <option value="1">JSON 解析 (1)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">解析 URL</label>
+                            <input type="text" id="parseUrl" placeholder="https://xxx.xxx?jx=" 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-amber-500 transition-all mono">
+                        </div>
+                        <button onclick="app.addParse()" 
+                            class="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white font-medium py-2.5 rounded-lg transition-all shadow-lg shadow-amber-500/25">
+                            <i class="fas fa-plus mr-2"></i>添加解析
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Flags Form -->
+                <div id="panel-flags" class="glass rounded-2xl p-6 border border-slate-800 hidden">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center text-rose-400">
+                        <i class="fas fa-plus-circle mr-2"></i>添加视频标识
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">标识名称</label>
+                            <input type="text" id="flagName" placeholder="如：youku, qq, iqiyi" 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-rose-500 transition-all">
+                        </div>
+                        <button onclick="app.addFlag()" 
+                            class="w-full bg-gradient-to-r from-rose-600 to-pink-600 text-white font-medium py-2.5 rounded-lg transition-all shadow-lg shadow-rose-500/25">
+                            <i class="fas fa-plus mr-2"></i>添加标识
+                        </button>
+                    </div>
+                    <div class="mt-6 pt-6 border-t border-slate-700">
+                        <h3 class="text-sm font-medium text-slate-400 mb-3">批量添加 (逗号分隔)</h3>
+                        <textarea id="bulkFlags" rows="2" placeholder="youku, qq, iqiyi" 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-rose-500 resize-none"></textarea>
+                        <button onclick="app.importBulkFlags()" class="mt-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition-colors">
+                            <i class="fas fa-file-import mr-1"></i>批量导入
+                        </button>
+                    </div>
+                </div>
+
+                <!-- IJK Form -->
+                <div id="panel-ijk" class="glass rounded-2xl p-6 border border-slate-800 hidden">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center text-cyan-400">
+                        <i class="fas fa-plus-circle mr-2"></i>播放器配置
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">配置组名称</label>
+                            <input type="text" id="ijkGroup" placeholder="软解码" 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 transition-all">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">配置项 (JSON 格式)</label>
+                            <textarea id="ijkOptions" rows="6" placeholder='[{"category": 4, "name": "opensles", "value": "0"}]' 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs mono focus:outline-none focus:border-cyan-500 resize-none"></textarea>
+                        </div>
+                        <button onclick="app.addIjk()" 
+                            class="w-full bg-gradient-to-r from-cyan-600 to-blue-600 text-white font-medium py-2.5 rounded-lg transition-all shadow-lg shadow-cyan-500/25">
+                            <i class="fas fa-plus mr-2"></i>添加配置组
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ads Form -->
+                <div id="panel-ads" class="glass rounded-2xl p-6 border border-slate-800 hidden">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center text-red-400">
+                        <i class="fas fa-plus-circle mr-2"></i>添加广告域名
+                    </h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">域名地址</label>
+                            <input type="text" id="adDomain" placeholder="如：example.com" 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500 transition-all mono">
+                        </div>
+                        <button onclick="app.addAd()" 
+                            class="w-full bg-gradient-to-r from-red-600 to-rose-600 text-white font-medium py-2.5 rounded-lg transition-all shadow-lg shadow-red-500/25">
+                            <i class="fas fa-plus mr-2"></i>添加域名
+                        </button>
+                    </div>
+                    <div class="mt-6 pt-6 border-t border-slate-700">
+                        <h3 class="text-sm font-medium text-slate-400 mb-3">批量添加 (每行一个)</h3>
+                        <textarea id="bulkAds" rows="4" placeholder="ad1.com&#10;ad2.com" 
+                            class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs mono focus:outline-none focus:border-red-500 resize-none"></textarea>
+                        <button onclick="app.importBulkAds()" class="mt-2 text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition-colors">
+                            <i class="fas fa-file-import mr-1"></i>批量导入
+                        </button>
+                    </div>
+                </div>
+
+                <!-- List Display -->
+                <div class="glass rounded-2xl p-6 border border-slate-800 max-h-[400px] overflow-hidden flex flex-col">
+                    <div class="flex items-center justify-between mb-4">
+                        <h3 class="font-semibold flex items-center">
+                            <i class="fas fa-list-ul text-slate-400 mr-2"></i>
+                            <span id="listTitle">站点列表</span>
+                            <span id="itemCount" class="ml-2 text-xs bg-slate-800 text-slate-400 px-2 py-0.5 rounded-full">0</span>
+                        </h3>
+                    </div>
+                    <div id="itemList" class="flex-1 overflow-y-auto space-y-2 pr-2">
+                        <div class="text-center text-slate-500 py-8 text-sm">
+                            <i class="fas fa-inbox text-2xl mb-2 block"></i>
+                            暂无数据，请添加
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel: JSON Preview -->
+            <div class="lg:col-span-7 space-y-6">
+                
+                <!-- Global Settings -->
+                <div class="glass rounded-2xl p-6 border border-slate-800">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center">
+                        <i class="fas fa-cog text-indigo-400 mr-2"></i>
+                        全局设置
+                    </h2>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">Spider 接口</label>
+                            <input type="text" id="globalSpider" placeholder="http://..." 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs mono focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">壁纸</label>
+                            <input type="text" id="globalWallpaper" placeholder="http://..." 
+                                class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs mono focus:outline-none focus:border-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">首页推荐</label>
+                            <select id="globalHome" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500">
+                                <option value="1">开启 (1)</option>
+                                <option value="0">关闭 (0)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-slate-400 mb-1">站点解析</label>
+                            <select id="globalParse" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500">
+                                <option value="0">内置 (0)</option>
+                                <option value="1">外置 (1)</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- JSON Output -->
+                <div class="glass rounded-2xl border border-slate-800 overflow-hidden flex flex-col h-[600px]">
+                    <div class="flex items-center justify-between p-4 border-b border-slate-800 bg-slate-900/50">
+                        <h2 class="text-lg font-semibold flex items-center">
+                            <i class="fas fa-code text-emerald-400 mr-2"></i>
+                            配置预览
+                        </h2>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="app.clearPreview()" class="text-xs bg-red-600/80 hover:bg-red-500 text-white px-3 py-1.5 rounded transition-colors" title="清空预览内容">
+                                <i class="fas fa-eraser mr-1"></i>清空
+                            </button>
+                            <button onclick="app.formatJson()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition-colors">
+                                <i class="fas fa-align-left mr-1"></i>格式化
+                            </button>
+                            <button onclick="app.minifyJson()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded transition-colors">
+                                <i class="fas fa-compress mr-1"></i>压缩
+                            </button>
+                            <button onclick="app.copyToClipboard()" class="text-xs bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded transition-colors">
+                                <i class="fas fa-copy mr-1"></i>复制
+                            </button>
+                            <button onclick="app.downloadJson()" class="text-xs bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded transition-colors">
+                                <i class="fas fa-download mr-1"></i>下载
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="flex-1 relative bg-slate-950 overflow-hidden">
+                        <textarea id="jsonOutput" class="w-full h-full bg-transparent text-slate-300 p-4 resize-none focus:outline-none mono text-xs leading-relaxed" readonly></textarea>
+                    </div>
+                    
+                    <div class="p-3 border-t border-slate-800 bg-slate-900/30 flex justify-between items-center text-xs">
+                        <span id="statusText" class="text-slate-500">就绪</span>
+                        <div class="flex items-center space-x-4">
+                            <button onclick="app.clearPreview()" class="text-slate-500 hover:text-red-400 transition-colors cursor-pointer">
+                                <i class="fas fa-trash-alt mr-1"></i>清空内容
+                            </button>
+                            <span id="charCount" class="text-slate-600 mono">0 字符</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="glass rounded-xl p-4 border border-slate-800 text-center">
+                        <div class="text-2xl font-bold text-indigo-400" id="statSites">0</div>
+                        <div class="text-xs text-slate-500 mt-1">影视站点</div>
+                    </div>
+                    <div class="glass rounded-xl p-4 border border-slate-800 text-center">
+                        <div class="text-2xl font-bold text-emerald-400" id="statLives">0</div>
+                        <div class="text-xs text-slate-500 mt-1">直播源</div>
+                    </div>
+                    <div class="glass rounded-xl p-4 border border-slate-800 text-center">
+                        <div class="text-2xl font-bold text-amber-400" id="statParses">0</div>
+                        <div class="text-xs text-slate-500 mt-1">解析接口</div>
+                    </div>
+                    <div class="glass rounded-xl p-4 border border-slate-800 text-center">
+                        <div class="text-2xl font-bold text-red-400" id="statAds">0</div>
+                        <div class="text-xs text-slate-500 mt-1">广告过滤</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Import JSON Modal -->
+    <div id="importModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass rounded-2xl p-6 max-w-2xl w-full border border-slate-700 max-h-[90vh] overflow-hidden flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-semibold flex items-center">
+                    <i class="fas fa-file-import text-emerald-400 mr-2"></i>
+                    导入 JSON 配置文件
+                </h3>
+                <button onclick="app.closeImportModal()" class="text-slate-400 hover:text-white transition-colors">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div id="dropZone" class="drop-zone rounded-xl p-8 text-center mb-4 cursor-pointer" onclick="document.getElementById('fileInput').click()">
+                <i class="fas fa-cloud-upload-alt text-4xl text-slate-500 mb-3"></i>
+                <p class="text-slate-300 font-medium mb-1">点击或拖拽 JSON 文件到此处</p>
+                <p class="text-slate-500 text-sm">支持 .json 格式文件</p>
+                <input type="file" id="fileInput" accept=".json" class="hidden" onchange="app.handleFileImport(event)">
+            </div>
+
+            <div id="importPreview" class="flex-1 overflow-hidden flex flex-col hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm text-slate-400">文件预览</span>
+                    <span id="importStats" class="text-xs text-emerald-400"></span>
+                </div>
+                <div class="flex-1 bg-slate-900 rounded-lg p-4 overflow-auto border border-slate-700">
+                    <pre id="importContent" class="text-xs mono text-slate-300"></pre>
+                </div>
+            </div>
+
+            <div class="flex space-x-3 mt-4 pt-4 border-t border-slate-700">
+                <button onclick="app.closeImportModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg transition-colors">
+                    取消
+                </button>
+                <button id="confirmImportBtn" onclick="app.confirmImport()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white py-2.5 rounded-lg transition-colors hidden" disabled>
+                    <i class="fas fa-check mr-2"></i>确认导入
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Clear Preview Confirmation Modal -->
+    <div id="clearModal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass rounded-2xl p-6 max-w-md w-full border border-slate-700">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle text-red-400 text-2xl"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-white mb-2">确认清空预览内容？</h3>
+                <p class="text-sm text-slate-400">此操作将清空配置预览区域的所有内容，但左侧列表中的数据不会被删除。您可以随时重新生成预览。</p>
+            </div>
+            <div class="flex space-x-3">
+                <button onclick="app.closeClearModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 py-2.5 rounded-lg transition-colors">
+                    取消
+                </button>
+                <button onclick="app.confirmClearPreview()" class="flex-1 bg-red-600 hover:bg-red-500 text-white py-2.5 rounded-lg transition-colors">
+                    <i class="fas fa-trash-alt mr-2"></i>确认清空
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-4 right-4 transform translate-y-20 opacity-0 transition-all duration-300 z-50">
+        <div class="bg-slate-800 border border-slate-700 text-white px-4 py-3 rounded-lg shadow-2xl flex items-center space-x-3">
+            <i id="toastIcon" class="fas fa-check-circle text-emerald-400"></i>
+            <span id="toastMessage" class="text-sm font-medium">操作成功</span>
+        </div>
+    </div>
+
+    <script>
+        const { pinyin } = pinyinPro;
+
+        class TVBoxGenerator {
+            constructor() {
+                this.data = {
+                    sites: [],
+                    lives: [],
+                    parses: [],
+                    flags: [],
+                    ijk: [],
+                    ads: []
+                };
+                this.currentTab = 'sites';
+                this.keyEdited = false;
+                this.importedData = null;
+                this.init();
+            }
+
+            init() {
+                this.loadFromStorage();
+                this.updatePreview();
+                this.updateStats();
+                this.setupDragAndDrop();
+            }
+
+            onNameInput(value) {
+                const keyInput = document.getElementById('siteKey');
+                const badge = document.querySelector('.auto-sync-badge');
+                
+                if (!this.keyEdited) {
+                    let autoKey = value;
+                    
+                    if (/[\u4e00-\u9fa5]/.test(value)) {
+                        autoKey = pinyin(value, {
+                            toneType: 'none',
+                            type: 'string',
+                            separator: ''
+                        });
+                    }
+                    
+                    autoKey = autoKey.toLowerCase()
+                        .replace(/\s+/g, '')
+                        .replace(/[^a-z0-9]/g, '')
+                        .substring(0, 20);
+                    
+                    keyInput.value = autoKey;
+                    
+                    if (autoKey) {
+                        keyInput.classList.add('auto-filled');
+                        badge.classList.remove('hidden');
+                    } else {
+                        keyInput.classList.remove('auto-filled');
+                        badge.classList.add('hidden');
+                    }
+                }
+            }
+
+            onKeyFocus() {
+                this.keyEdited = true;
+                document.getElementById('siteKey').classList.remove('auto-filled');
+                document.querySelector('.auto-sync-badge').classList.add('hidden');
+            }
+
+            onKeyBlur() {
+                if (!document.getElementById('siteKey').value.trim()) {
+                    this.keyEdited = false;
+                    const nameValue = document.getElementById('siteName').value;
+                    if (nameValue) {
+                        this.onNameInput(nameValue);
+                    }
+                }
+            }
+
+            // NEW: Clear Preview Functions
+            clearPreview() {
+                const output = document.getElementById('jsonOutput').value;
+                if (!output || output === '{}') {
+                    this.showToast('预览内容已为空', 'info');
+                    return;
+                }
+                document.getElementById('clearModal').classList.remove('hidden');
+            }
+
+            closeClearModal() {
+                document.getElementById('clearModal').classList.add('hidden');
+            }
+
+            confirmClearPreview() {
+                document.getElementById('jsonOutput').value = '';
+                document.getElementById('charCount').textContent = '0 字符';
+                document.getElementById('statusText').textContent = '已清空';
+                document.getElementById('statusText').classList.add('text-red-400');
+                setTimeout(() => {
+                    document.getElementById('statusText').classList.remove('text-red-400');
+                    document.getElementById('statusText').textContent = '就绪';
+                }, 2000);
+                
+                this.closeClearModal();
+                this.showToast('预览内容已清空');
+            }
+
+            showImportModal() {
+                document.getElementById('importModal').classList.remove('hidden');
+                this.importedData = null;
+                document.getElementById('importPreview').classList.add('hidden');
+                document.getElementById('confirmImportBtn').classList.add('hidden');
+                document.getElementById('confirmImportBtn').disabled = true;
+            }
+
+            closeImportModal() {
+                document.getElementById('importModal').classList.add('hidden');
+                this.importedData = null;
+                document.getElementById('fileInput').value = '';
+            }
+
+            setupDragAndDrop() {
+                const dropZone = document.getElementById('dropZone');
+                
+                ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    });
+                });
+
+                ['dragenter', 'dragover'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => {
+                        dropZone.classList.add('drag-over');
+                    });
+                });
+
+                ['dragleave', 'drop'].forEach(eventName => {
+                    dropZone.addEventListener(eventName, () => {
+                        dropZone.classList.remove('drag-over');
+                    });
+                });
+
+                dropZone.addEventListener('drop', (e) => {
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0 && files[0].name.endsWith('.json')) {
+                        this.processFile(files[0]);
+                    } else {
+                        this.showToast('请上传 JSON 格式文件', 'error');
+                    }
+                });
+            }
+
+            handleFileImport(event) {
+                const file = event.target.files[0];
+                if (file) {
+                    this.processFile(file);
+                }
+            }
+
+            processFile(file) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const content = e.target.result;
+                        const json = JSON.parse(content);
+                        
+                        if (!json.sites && !json.lives && !json.parses) {
+                            throw new Error('无效的 TVBox 配置文件');
+                        }
+                        
+                        this.importedData = json;
+                        this.showImportPreview(json);
+                        this.showToast('文件读取成功，请确认导入');
+                    } catch (err) {
+                        this.showToast('解析失败: ' + err.message, 'error');
+                    }
+                };
+                reader.readAsText(file);
+            }
+
+            showImportPreview(json) {
+                const preview = document.getElementById('importPreview');
+                const content = document.getElementById('importContent');
+                const stats = document.getElementById('importStats');
+                const confirmBtn = document.getElementById('confirmImportBtn');
+                
+                const siteCount = json.sites ? json.sites.length : 0;
+                const liveCount = json.lives ? json.lives.length : 0;
+                const parseCount = json.parses ? json.parses.length : 0;
+                const flagCount = json.flags ? json.flags.length : 0;
+                
+                stats.textContent = `站点: ${siteCount} | 直播: ${liveCount} | 解析: ${parseCount} | 标识: ${flagCount}`;
+                
+                const previewObj = {};
+                if (json.sites) previewObj.sites = json.sites.slice(0, 3);
+                if (json.lives) previewObj.lives = json.lives.slice(0, 2);
+                if (json.parses) previewObj.parses = json.parses.slice(0, 2);
+                if (json.flags) previewObj.flags = json.flags.slice(0, 5);
+                
+                content.textContent = JSON.stringify(previewObj, null, 2) + 
+                    (json.sites && json.sites.length > 3 ? '\n... 等更多数据' : '');
+                
+                preview.classList.remove('hidden');
+                confirmBtn.classList.remove('hidden');
+                confirmBtn.disabled = false;
+            }
+
+            confirmImport() {
+                if (!this.importedData) return;
+                
+                if (this.importedData.sites) {
+                    this.data.sites.push(...this.importedData.sites);
+                }
+                if (this.importedData.lives) {
+                    this.data.lives.push(...this.importedData.lives);
+                }
+                if (this.importedData.parses) {
+                    this.data.parses.push(...this.importedData.parses);
+                }
+                if (this.importedData.flags) {
+                    this.data.flags.push(...this.importedData.flags);
+                }
+                if (this.importedData.ijk) {
+                    this.data.ijk.push(...this.importedData.ijk);
+                }
+                if (this.importedData.ads) {
+                    this.data.ads.push(...this.importedData.ads);
+                }
+                
+                if (this.importedData.spider) {
+                    document.getElementById('globalSpider').value = this.importedData.spider;
+                }
+                if (this.importedData.wallpaper) {
+                    document.getElementById('globalWallpaper').value = this.importedData.wallpaper;
+                }
+                
+                this.renderList();
+                this.updatePreview();
+                this.updateStats();
+                this.closeImportModal();
+                this.showToast('配置导入成功！');
+            }
+
+            switchTab(tab) {
+                this.currentTab = tab;
+                
+                document.querySelectorAll('[id^="tab-"]').forEach(btn => {
+                    btn.classList.remove('tab-active');
+                    btn.classList.add('bg-slate-800', 'text-slate-400');
+                });
+                document.getElementById(`tab-${tab}`).classList.add('tab-active');
+                document.getElementById(`tab-${tab}`).classList.remove('bg-slate-800', 'text-slate-400');
+                
+                document.querySelectorAll('[id^="panel-"]').forEach(panel => {
+                    panel.classList.add('hidden');
+                });
+                document.getElementById(`panel-${tab}`).classList.remove('hidden');
+                
+                const titles = {
+                    sites: '站点列表',
+                    lives: '直播列表',
+                    parses: '解析列表',
+                    flags: '标识列表',
+                    ijk: '播放器配置',
+                    ads: '广告列表'
+                };
+                document.getElementById('listTitle').textContent = titles[tab];
+                
+                this.renderList();
+            }
+
+            addSite() {
+                const key = document.getElementById('siteKey').value.trim();
+                const name = document.getElementById('siteName').value.trim();
+                const api = document.getElementById('siteApi').value.trim();
+                
+                if (!key || !name || !api) {
+                    this.showToast('请填写完整的站点信息', 'error');
+                    return;
+                }
+
+                this.data.sites.push({
+                    key,
+                    name,
+                    type: parseInt(document.getElementById('siteType').value),
+                    api,
+                    searchable: parseInt(document.getElementById('siteSearchable').value),
+                    quickSearch: parseInt(document.getElementById('siteQuickSearch').value),
+                    filterable: parseInt(document.getElementById('siteFilterable').value)
+                });
+
+                this.clearSiteInputs();
+                this.renderList();
+                this.updatePreview();
+                this.updateStats();
+                this.showToast('站点添加成功');
+            }
+
+            clearSiteInputs() {
+                document.getElementById('siteKey').value = '';
+                document.getElementById('siteName').value = '';
+                document.getElementById('siteApi').value = '';
+                document.getElementById('siteKey').classList.remove('auto-filled');
+                document.querySelector('.auto-sync-badge').classList.add('hidden');
+                this.keyEdited = false;
+            }
+
+            importBulkSites() {
+                try {
+                    const text = document.getElementById('bulkSites').value.trim();
+                    if (!text) return;
+                    
+                    const sites = JSON.parse(text);
+                    if (Array.isArray(sites)) {
+                        this.data.sites.push(...sites);
+                        document.getElementById('bulkSites').value = '';
+                        this.renderList();
+                        this.updatePreview();
+                        this.updateStats();
+                        this.showToast(`成功导入 ${sites.length} 个站点`);
+                    }
+                } catch (e) {
+                    this.showToast('JSON 格式错误', 'error');
+                }
+            }
+
+            addLive() {
+                const group = document.getElementById('liveGroup').value.trim() || '自定义';
+                const channelName = document.getElementById('liveChannelName').value.trim() || '直播源';
+                const urlsText = document.getElementById('liveUrls').value.trim();
+                
+                if (!urlsText) {
+                    this.showToast('请输入直播地址', 'error');
+                    return;
+                }
+
+                const urls = urlsText.split('\n').filter(u => u.trim());
+                
+                this.data.lives.push({
+                    group,
+                    channels: [{
+                        name: channelName,
+                        urls
+                    }]
+                });
+
+                document.getElementById('liveUrls').value = '';
+                this.renderList();
+                this.updatePreview();
+                this.updateStats();
+                this.showToast('直播源添加成功');
+            }
+
+            addParse() {
+                const name = document.getElementById('parseName').value.trim();
+                const url = document.getElementById('parseUrl').value.trim();
+                
+                if (!name || !url) {
+                    this.showToast('请填写完整的解析信息', 'error');
+                    return;
+                }
+
+                this.data.parses.push({
+                    name,
+                    type: parseInt(document.getElementById('parseType').value),
+                    url
+                });
+
+                document.getElementById('parseName').value = '';
+                document.getElementById('parseUrl').value = '';
+                this.renderList();
+                this.updatePreview();
+                this.updateStats();
+                this.showToast('解析接口添加成功');
+            }
+
+            addFlag() {
+                const name = document.getElementById('flagName').value.trim();
+                if (!name) {
+                    this.showToast('请输入标识名称', 'error');
+                    return;
+                }
+
+                this.data.flags.push(name);
+                document.getElementById('flagName').value = '';
+                this.renderList();
+                this.updatePreview();
+                this.updateStats();
+                this.showToast('标识添加成功');
+            }
+
+            importBulkFlags() {
+                const text = document.getElementById('bulkFlags').value.trim();
+                if (!text) return;
+                
+                const flags = text.split(/[,，\n]/).map(f => f.trim()).filter(f => f);
+                this.data.flags.push(...flags);
+                document.getElementById('bulkFlags').value = '';
+                this.renderList();
+                this.updatePreview();
+                this.updateStats();
+                this.showToast(`成功导入 ${flags.length} 个标识`);
+            }
+
+            addIjk() {
+                const group = document.getElementById('ijkGroup').value.trim();
+                const optionsText = document.getElementById('ijkOptions').value.trim();
+                
+                if (!group || !optionsText) {
+                    this.showToast('请填写完整的播放器配置', 'error');
+                    return;
+                }
+
+                try {
+                    const options = JSON.parse(optionsText);
+                    this.data.ijk.push({
+                        group,
+                        options
+                    });
+                    document.getElementById('ijkGroup').value = '';
+                    document.getElementById('ijkOptions').value = '';
+                    this.renderList();
+                    this.updatePreview();
+                    this.updateStats();
+                    this.showToast('播放器配置添加成功');
+                } catch (e) {
+                    this.showToast('JSON 格式错误', 'error');
+                }
+            }
+
+            addAd() {
+                const domain = document.getElementById('adDomain').value.trim();
+                if (!domain) {
+                    this.showToast('请输入域名', 'error');
+                    return;
+                }
+
+                this.data.ads.push(domain);
+                document.getElementById('adDomain').value = '';
+                this.renderList();
+                this.updatePreview();
+                this.updateStats();
+                this.showToast('广告域名添加成功');
+            }
+
+            importBulkAds() {
+                const text = document.getElementById('bulkAds').value.trim();
+                if (!text) return;
+                
+                const ads = text.split('\n').map(a => a.trim()).filter(a => a);
+                this.data.ads.push(...ads);
+                document.getElementById('bulkAds').value = '';
+                this.renderList();
+                this.updatePreview();
+                this.updateStats();
+                this.showToast(`成功导入 ${ads.length} 个域名`);
+            }
+
+            removeItem(index) {
+                const array = this.data[this.currentTab];
+                if (Array.isArray(array)) {
+                    array.splice(index, 1);
+                    this.renderList();
+                    this.updatePreview();
+                    this.updateStats();
+                }
+            }
+
+            renderList() {
+                const container = document.getElementById('itemList');
+                const count = document.getElementById('itemCount');
+                const items = this.data[this.currentTab];
+                
+                count.textContent = items.length;
+
+                if (items.length === 0) {
+                    container.innerHTML = `
+                        <div class="text-center text-slate-500 py-8 text-sm">
+                            <i class="fas fa-inbox text-2xl mb-2 block"></i>
+                            暂无数据，请添加
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                items.forEach((item, index) => {
+                    let title, subtitle;
+                    
+                    switch(this.currentTab) {
+                        case 'sites':
+                            title = item.name;
+                            subtitle = item.key + ' | ' + (item.api.length > 30 ? item.api.substring(0, 30) + '...' : item.api);
+                            break;
+                        case 'lives':
+                            title = item.group;
+                            subtitle = `${item.channels.length} 个频道`;
+                            break;
+                        case 'parses':
+                            title = item.name;
+                            subtitle = item.url;
+                            break;
+                        case 'flags':
+                            title = item;
+                            subtitle = '视频标识';
+                            break;
+                        case 'ijk':
+                            title = item.group;
+                            subtitle = `${item.options.length} 个配置项`;
+                            break;
+                        case 'ads':
+                            title = item;
+                            subtitle = '广告域名';
+                            break;
+                    }
+
+                    html += `
+                        <div class="source-card glass rounded-lg p-3 border border-slate-700 flex items-center justify-between group animate-slide-in">
+                            <div class="flex-1 min-w-0 mr-3">
+                                <div class="text-sm font-medium text-slate-200 truncate">${title}</div>
+                                <div class="text-xs text-slate-500 truncate mono">${subtitle}</div>
+                            </div>
+                            <button onclick="app.removeItem(${index})" class="text-slate-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                    `;
+                });
+                
+                container.innerHTML = html;
+            }
+
+            generateJSON() {
+                const json = {
+                    sites: this.data.sites,
+                    lives: this.data.lives,
+                    parses: this.data.parses,
+                    flags: this.data.flags,
+                    ijk: this.data.ijk,
+                    ads: this.data.ads
+                };
+
+                const spider = document.getElementById('globalSpider').value.trim();
+                const wallpaper = document.getElementById('globalWallpaper').value.trim();
+                
+                if (spider) json.spider = spider;
+                if (wallpaper) json.wallpaper = wallpaper;
+                
+                json.home = parseInt(document.getElementById('globalHome').value);
+                json.parse = parseInt(document.getElementById('globalParse').value);
+
+                return json;
+            }
+
+            updatePreview() {
+                const json = this.generateJSON();
+                const output = JSON.stringify(json, null, 2);
+                document.getElementById('jsonOutput').value = output;
+                document.getElementById('charCount').textContent = `${output.length} 字符`;
+                document.getElementById('statusText').textContent = '已生成';
+            }
+
+            updateStats() {
+                document.getElementById('statSites').textContent = this.data.sites.length;
+                document.getElementById('statLives').textContent = this.data.lives.length;
+                document.getElementById('statParses').textContent = this.data.parses.length;
+                document.getElementById('statAds').textContent = this.data.ads.length;
+            }
+
+            formatJson() {
+                this.updatePreview();
+                this.showToast('已格式化');
+            }
+
+            minifyJson() {
+                const json = this.generateJSON();
+                document.getElementById('jsonOutput').value = JSON.stringify(json);
+                this.showToast('已压缩');
+            }
+
+            copyToClipboard() {
+                const output = document.getElementById('jsonOutput');
+                if (!output.value) {
+                    this.showToast('预览内容为空，无法复制', 'error');
+                    return;
+                }
+                output.select();
+                document.execCommand('copy');
+                window.getSelection().removeAllRanges();
+                this.showToast('已复制到剪贴板');
+            }
+
+            downloadJson() {
+                const content = document.getElementById('jsonOutput').value;
+                if (!content) {
+                    this.showToast('预览内容为空，无法下载', 'error');
+                    return;
+                }
+                const blob = new Blob([content], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `tvbox_config_${Date.now()}.json`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                this.showToast('下载已开始');
+            }
+
+            loadDemoData() {
+                this.data = {
+                    sites: [
+                        {
+                            "key": "wujin",
+                            "name": "无尽",
+                            "type": 1,
+                            "api": "https://api.wujinapi.me/api.php/provide/vod/from/wjm3u8/",
+                            "searchable": 1,
+                            "quickSearch": 1,
+                            "filterable": 1
+                        },
+                        {
+                            "key": "ruyi",
+                            "name": "如意",
+                            "type": 0,
+                            "api": "https://cj.rycjapi.com/api.php/provide/vod/from/ruyi/at/xml/",
+                            "searchable": 1,
+                            "quickSearch": 1,
+                            "filterable": 1
+                        },
+                        {
+                            "key": "heimuer",
+                            "name": "黑木耳",
+                            "type": 1,
+                            "api": "https://json.heimuer.xyz/api.php/provide/vod/?ac=list",
+                            "searchable": 1,
+                            "quickSearch": 1,
+                            "filterable": 1
+                        }
+                    ],
+                    lives: [
+                        {
+                            "group": "自定义",
+                            "channels": [
+                                {
+                                    "name": "直播源",
+                                    "urls": ["about:blank"]
+                                }
+                            ]
+                        }
+                    ],
+                    parses: [
+                        {
+                            "name": "解析1",
+                            "type": 0,
+                            "url": "https://xxx.xxx?jx="
+                        }
+                    ],
+                    flags: ["youku", "qq", "iqiyi", "qiyi", "letv", "sohu", "tudou", "pptv", "mgtv", "wasu"],
+                    ijk: [
+                        {
+                            "group": "软解码",
+                            "options": [
+                                {"category": 4, "name": "opensles", "value": "0"},
+                                {"category": 4, "name": "overlay-format", "value": "842225234"},
+                                {"category": 4, "name": "framedrop", "value": "1"}
+                            ]
+                        }
+                    ],
+                    ads: ["mimg.0c1q0l.cn", "www.googletagmanager.com", "www.google-analytics.com"]
+                };
+                
+                this.renderList();
+                this.updatePreview();
+                this.updateStats();
+                this.showToast('示例数据已加载');
+            }
+
+            clearAll() {
+                if (confirm('确定要清空所有数据吗？这将删除所有站点、直播源、解析等数据。')) {
+                    this.data = { sites: [], lives: [], parses: [], flags: [], ijk: [], ads: [] };
+                    this.renderList();
+                    this.updatePreview();
+                    this.updateStats();
+                    this.showToast('已清空所有数据');
+                }
+            }
+
+            saveToStorage() {
+                localStorage.setItem('tvbox_data', JSON.stringify(this.data));
+            }
+
+            loadFromStorage() {
+                const saved = localStorage.getItem('tvbox_data');
+                if (saved) {
+                    this.data = JSON.parse(saved);
+                }
+            }
+
+            showToast(message, type = 'success') {
+                const toast = document.getElementById('toast');
+                const icon = document.getElementById('toastIcon');
+                const msg = document.getElementById('toastMessage');
+                
+                const icons = {
+                    success: 'fa-check-circle text-emerald-400',
+                    error: 'fa-exclamation-circle text-red-400',
+                    info: 'fa-info-circle text-blue-400'
+                };
+                
+                icon.className = `fas ${icons[type] || icons.success}`;
+                msg.textContent = message;
+                
+                toast.classList.remove('translate-y-20', 'opacity-0');
+                
+                setTimeout(() => {
+                    toast.classList.add('translate-y-20', 'opacity-0');
+                }, 3000);
+            }
+        }
+
+        const app = new TVBoxGenerator();
+        
+        setInterval(() => app.saveToStorage(), 10000);
+    </script>
+</body>
+</html>
